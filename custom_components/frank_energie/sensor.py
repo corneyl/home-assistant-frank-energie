@@ -192,6 +192,19 @@ class FrankEnergieSensor(CoordinatorEntity, SensorEntity):
         for hour in hourprices:
             today_prices.append(hour['priceIncludingMarkup'])
         return today_prices
+    
+    def get_future_prices(self) -> List:
+        upcoming_prices = {}
+        now = datetime.utcnow()
+        for hour in self.data._elec_data:
+            if datetime.fromisoformat(hour['from'][:-5]) > now:
+                upcoming_prices[hour['from']] = hour['priceIncludingMarkup']
+        return upcoming_prices
+
+    @property
+    def extra_state_attributes(self):
+        """Return entity specific state attributes."""
+        return {"Upcoming Hours": self.get_future_prices()}
 
 class FrankEnergieData:
     """Get the latest data and update the states."""
