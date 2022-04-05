@@ -157,17 +157,17 @@ class FrankEnergieSensor(CoordinatorEntity, SensorEntity):
 
             sensor_type = self.entity_description.key
             if sensor_type == "elec_markup":
-                self._attr_native_value = elec[1]
+                self._attr_native_value = elec[0] + elec[1] + elec[2] + elec[3]
             elif sensor_type == "elec_market":
                 self._attr_native_value = elec[0]
             elif sensor_type == "elec_tax":
-                self._attr_native_value = elec[0] + elec[2]
+                self._attr_native_value = elec[0] + elec[1]
             elif sensor_type == "gas_markup":
-                self._attr_native_value = gas[1]
+                self._attr_native_value = gas[0] + gas[1] + gas[2] + gas[3]
             elif sensor_type == "gas_market":
                 self._attr_native_value = gas[0]
             elif sensor_type == "gas_tax":
-                self._attr_native_value = gas[0] + gas[2]
+                self._attr_native_value = gas[0] + gas[1]
             elif sensor_type == "gas_max":
                 self._attr_native_value = max(today_gas)
             elif sensor_type == "gas_min":
@@ -180,17 +180,20 @@ class FrankEnergieSensor(CoordinatorEntity, SensorEntity):
                 self._attr_native_value = round(sum(today_elec) / len(today_elec), 5)
 
     def get_current_hourprices(self, hourprices) -> Tuple:
-        # hack to compare to datestring in json data
-        current_hour = str(datetime.utcnow().replace(microsecond=0,second=0,minute=0).isoformat()) + '.000Z'
+        # hack to compare to datestring in json data        
+        # additional hack to fix prices during DST
+        hour_offset = 1
+        current_hour = datetime.utcnow() + timedelta(hours = hour_offset)
+        current_hour = str(current_hour.replace(microsecond=0,second=0,minute=0).isoformat()) + '.000Z'
 
         for hour in hourprices:
             if hour['from'] == current_hour:
-                return hour['marketPrice'], hour['priceIncludingMarkup'], hour['marketPriceTax']
+                return hour['marketPrice'], hour['marketPriceTax'], hour['sourcingMarkupPrice'], hour['energyTaxPrice']
 
     def get_hourprices(self, hourprices) -> List:
         today_prices = []
         for hour in hourprices:
-            today_prices.append(hour['priceIncludingMarkup'])
+            today_prices.append((hour['marketPrice'] + hour['marketPriceTax'] + hour['sourcingMarkupPrice'] + hour['energyTaxPrice']))
         return today_prices
     
     def get_future_prices(self) -> List:
@@ -222,7 +225,7 @@ class FrankEnergieData:
         # We request data for today up until the day after tomorrow. This is to ensure we always request all available data.
         today = date.today()
         tomorrow = today + timedelta(days = 2)
-        query_data = {	"query": "query MarketPrices($startDate: Date!, $endDate: Date!) { marketPricesElectricity(startDate: $startDate, endDate: $endDate) { from till marketPrice marketPriceTax priceIncludingMarkup } marketPricesGas(startDate: $startDate, endDate: $endDate) { from till marketPrice marketPriceTax priceIncludingMarkup } }",
+        query_data = {	"query": "query MarketPrices($startDate: Date!, $endDate: Date!) { marketPricesElectricity(startDate: $startDate, endDate: $endDate) { from till marketPrice marketPriceTax sourcingMarkupPrice energyTaxPrice } marketPricesGas(startDate: $startDate, endDate: $endDate) { from till marketPrice marketPriceTax sourcingMarkupPrice energyTaxPrice } }",
             "variables": { "startDate":str(today),"endDate":str(tomorrow) },
             "operationName": "MarketPrices"
         }
