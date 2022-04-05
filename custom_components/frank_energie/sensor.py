@@ -201,7 +201,7 @@ class FrankEnergieSensor(CoordinatorEntity, SensorEntity):
         now = datetime.utcnow()
         for hour in self.data._elec_data:
             if datetime.fromisoformat(hour['from'][:-5]) > now:
-                upcoming_prices[hour['from']] = hour['priceIncludingMarkup']
+                upcoming_prices[hour['from']] = (hour['marketPrice'] + hour['marketPriceTax'] + hour['sourcingMarkupPrice'] + hour['energyTaxPrice'])
         return upcoming_prices
 
     @property
