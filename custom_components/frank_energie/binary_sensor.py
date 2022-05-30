@@ -1,16 +1,12 @@
-"""Frank Energie current electricity and gas price information service."""
-from __future__ import annotations, annotations, annotations
+"""Frank Energie current electricity and gas price binary sensors."""
+from __future__ import annotations
 
-import logging
-
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from .const import CONF_COORDINATOR, DOMAIN, SENSOR_TYPES
+from .const import BINARY_SENSOR_TYPES, CONF_COORDINATOR, DOMAIN
 from .sensor_base import FrankEnergieSensorBase
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -18,25 +14,25 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up Frank Energie sensor entries."""
+    """Set up Frank Energie binary_sensor entries."""
     frank_coordinator = hass.data[DOMAIN][config_entry.entry_id][CONF_COORDINATOR]
 
     # Add an entity for each sensor type
     async_add_entities(
         [
-            FrankEnergieSensor(frank_coordinator, description)
-            for description in SENSOR_TYPES
+            FrankEnergieBinarySensor(frank_coordinator, description)
+            for description in BINARY_SENSOR_TYPES
         ],
         True
     )
 
 
-class FrankEnergieSensor(FrankEnergieSensorBase, SensorEntity):
+class FrankEnergieBinarySensor(FrankEnergieSensorBase, BinarySensorEntity):
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
         sensor_data = self.coordinator.processed_data()
-        self._attr_native_value = self.entity_description.value_fn(sensor_data)
+        self._attr_is_on = self.entity_description.value_fn(sensor_data)
         self._attr_extra_state_attributes = self.entity_description.attr_fn(sensor_data) \
             if self.entity_description.attr_fn else None
         self.schedule_update()
